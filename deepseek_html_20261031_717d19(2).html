@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Series de Fourier — Cuadrada, Sierra y Triangular</title>
+<style>
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 26px 18px 60px;
+    min-height: 100vh;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    color: #e8ecf8;
+    background-color: #080b14;
+    background-image:
+      radial-gradient(900px 480px at 50% -8%, rgba(76,201,240,.14), transparent 70%),
+      radial-gradient(700px 420px at 92% 8%, rgba(184,146,255,.11), transparent 70%);
+  }
+
+  .wrap { max-width: 1280px; margin: 0 auto; }
+
+  header h1 {
+    margin: 0 0 6px;
+    font-size: clamp(1.35rem, 2.4vw, 1.9rem);
+    letter-spacing: .3px;
+    background: linear-gradient(90deg, #4cc9f0, #b892ff, #ffb703);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  header .sub { margin: 0 0 20px; color: #8590b3; font-size: .92rem; }
+
+  /* ------- Panel de controles ------- */
+  .panel {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px 30px;
+    align-items: flex-end;
+    padding: 16px 18px;
+    margin-bottom: 14px;
+    background: linear-gradient(180deg, rgba(28,36,62,.92), rgba(18,24,42,.92));
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 16px;
+  }
+
+  .buttons { display: flex; gap: 10px; }
+
+  .btn {
+    padding: 10px 20px;
+    border-radius: 10px;
+    border: none;
+    font-size: .9rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+    cursor: pointer;
+    color: #06121b;
+    transition: transform .12s ease, box-shadow .2s ease, opacity .2s ease, filter .2s ease;
+  }
+  .btn:active { transform: translateY(1px) scale(.99); }
+
+  .btn-start { background: linear-gradient(180deg,#5ee0a0,#22c55e); box-shadow: 0 6px 18px -8px #22c55e; }
+  .btn-start:hover { box-shadow: 0 8px 24px -6px #22c55e; }
+  .btn-stop  { background: linear-gradient(180deg,#ff8fa3,#ef476f); color:#20060c; box-shadow: 0 6px 18px -8px #ef476f; }
+  .btn-stop:hover { box-shadow: 0 8px 24px -6px #ef476f; }
+
+  .btn.inactive { opacity: .42; filter: grayscale(.55); }
+
+  /* ------- Deslizadores + casillas numéricas ------- */
+  .sliders {
+    flex: 1 1 480px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px 26px;
+  }
+  .slider { display: flex; flex-direction: column; gap: 7px; }
+
+  .slider label {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    font-size: .72rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: #8590b3;
+  }
+  .slider label .unit {
+    letter-spacing: .06em;
+    font-size: .68rem;
+    color: #5f6a8c;
+  }
+
+  .ctl { display: flex; align-items: center; gap: 10px; }
+  .ctl input[type="range"] { flex: 1 1 auto; min-width: 0; }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 999px;
+    outline: none;
+    cursor: pointer;
+    background: linear-gradient(90deg, #4cc9f0, #b892ff);
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid #4cc9f0;
+    box-shadow: 0 0 12px rgba(76,201,240,.75);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid #4cc9f0;
+    box-shadow: 0 0 12px rgba(76,201,240,.75);
+  }
+
+  input[type="number"] {
+    width: 74px;
+    flex: 0 0 auto;
+    padding: 6px 6px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,.14);
+    background: rgba(0,0,0,.38);
+    color: #e8ecf8;
+    font: inherit;
+    font-size: .82rem;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  input[type="number"]:focus {
+    border-color: #4cc9f0;
+    box-shadow: 0 0 0 3px rgba(76,201,240,.16);
+  }
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type="number"] { -moz-appearance: textfield; }
+
+  /* ------- Panel desplegable de términos ------- */
+  .terms {
+    margin-bottom: 16px;
+    background: linear-gradient(180deg, rgba(28,36,62,.92), rgba(18,24,42,.92));
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .terms-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    padding: 13px 18px;
+    background: transparent;
+    border: none;
+    color: #dbe2f7;
+    font: inherit;
+    font-size: .84rem;
+    font-weight: 600;
+    letter-spacing: .05em;
+    cursor: pointer;
+    text-align: left;
+  }
+  .terms-head:hover { background: rgba(255,255,255,.03); }
+  .terms-head .chev {
+    color: #7b86a8;
+    font-size: .9rem;
+    transition: transform .3s ease;
+  }
+  .terms.open .terms-head .chev { transform: rotate(180deg); }
+
+  .terms-inner {
+    overflow: hidden;
+    max-height: 0;
+    padding: 0 18px;
+    transition: max-height .4s ease, padding .3s ease;
+  }
+  .terms.open .terms-inner {
+    max-height: 4000px;
+    padding: 2px 18px 18px;
+  }
+
+  .terms-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 14px 22px;
+  }
+
+  .terms-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 18px;
+  }
+
+  .btn-ghost {
+    padding: 8px 14px;
+    border-radius: 9px;
+    border: 1px solid rgba(255,255,255,.14);
+    background: rgba(255,255,255,.04);
+    color: #cfd7ee;
+    font: inherit;
+    font-size: .78rem;
+    font-weight: 600;
+    letter-spacing: .02em;
+    cursor: pointer;
+    transition: background .15s ease, border-color .15s ease, opacity .2s ease;
+  }
+  .btn-ghost:hover:not(:disabled) {
+    background: rgba(255,255,255,.09);
+    border-color: rgba(255,255,255,.26);
+  }
+  .btn-ghost:disabled { opacity: .32; cursor: not-allowed; }
+
+  .note {
+    margin: 0 0 20px;
+    padding-left: 2px;
+    font-size: .79rem;
+    line-height: 1.55;
+    color: #7b86a8;
+  }
+  .note b { color: #9aa5c7; font-weight: 600; }
+
+  /* ------- Tarjetas ------- */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+    gap: 18px;
+  }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px 16px 14px;
+    background: linear-gradient(180deg, rgba(24,31,54,.95), rgba(14,19,34,.95));
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 16px;
+    box-shadow: 0 24px 50px -34px #000;
+  }
+
+  .card h2 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: .95rem;
+    font-weight: 600;
+    letter-spacing: .05em;
+    color: #dbe2f7;
+  }
+  .card h2 .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--c);
+    box-shadow: 0 0 14px var(--c);
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 200px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,.05);
+    background: radial-gradient(120% 120% at 50% 0%, #0d1324, #070a12);
+  }
+
+  /* ------- Fórmulas ------- */
+  .eq {
+    padding: 11px 14px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,.07);
+    border-left: 3px solid rgba(255,255,255,.13);
+    background: rgba(255,255,255,.035);
+    font-family: "Cambria Math", "Latin Modern Math", "STIX Two Math", Georgia, "Times New Roman", serif;
+    font-style: italic;
+    font-size: .95rem;
+    line-height: 2.05;
+    color: #cfd7ee;
+    overflow-x: auto;
+  }
+
+  .eq.sub {
+    background: rgba(255,255,255,.045);
+    border-left-color: var(--c);
+  }
+
+  .eq .lbl {
+    display: block;
+    margin-bottom: 6px;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    font-style: normal;
+    font-size: .6rem;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: #6b7699;
+  }
+  .eq.sub .lbl { color: var(--c); opacity: .9; }
+
+  .formula { white-space: normal; }
+  .formula sup { font-size: .7em; }
+  .formula sub { font-size: .68em; font-style: normal; }
+
+  .frac {
+    display: inline-flex;
+    flex-direction: column;
+    vertical-align: middle;
+    text-align: center;
+    margin: 0 .22em;
+    font-size: .8em;
+    line-height: 1.3;
+    transform: translateY(-.06em);
+  }
+  .frac .num {
+    padding: 0 .3em .07em;
+    border-bottom: 1.2px solid currentColor;
+    white-space: nowrap;
+  }
+  .frac .den { padding: .07em .3em 0; }
+
+  .val {
+    color: var(--c);
+    font-weight: 700;
+    font-style: normal;
+  }
+
+  .eq .omega {
+    margin-top: 9px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(255,255,255,.09);
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    font-style: normal;
+    font-size: .72rem;
+    letter-spacing: .03em;
+    color: #6f7a9c;
+  }
+  .eq .omega b { color: #a7b2d4; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Series de Fourier</h1>
+    <p class="sub">Ondas cuadrada, diente de sierra y triangular · hasta 20 coeficientes</p>
+  </header>
+
+  <!-- ============ CONTROLES PRINCIPALES ============ -->
+  <div class="panel">
+    <div class="buttons">
+      <button id="btnStart" class="btn btn-start">▶ Iniciar</button>
+      <button id="btnStop"  class="btn btn-stop inactive">■ Detener</button>
+    </div>
+
+    <div class="sliders">
+      <div class="slider">
+        <label for="freq">Frecuencia <span class="unit">Hz</span></label>
+        <div class="ctl">
+          <input id="freq" type="range" min="0.1" max="3" step="0.05" value="0.6">
+          <input id="freqNum" type="number" min="0.1" max="3" step="0.05" value="0.60">
+        </div>
+      </div>
+
+      <div class="slider">
+        <label for="amp">Amplitud <span class="unit">A</span></label>
+        <div class="ctl">
+          <input id="amp" type="range" min="0" max="3" step="0.01" value="1">
+          <input id="ampNum" type="number" min="0" max="3" step="0.01" value="1.00">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PANEL DESPLEGABLE DE TÉRMINOS ============ -->
+  <div class="terms open" id="termsPanel">
+    <button class="terms-head" id="termsHead" type="button">
+      <span>Términos de la serie · <span id="termsCount">3 de 20</span></span>
+      <span class="chev">▾</span>
+    </button>
+
+    <div class="terms-inner" id="termsInner">
+      <div class="terms-grid" id="termsGrid"></div>
+      <div class="terms-actions">
+        <button class="btn-ghost" id="addTerm" type="button">＋ Agregar término</button>
+        <button class="btn-ghost" id="removeTerm" type="button">− Quitar término</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="note">
+    <b>ω = 2πf</b> · La amplitud <b>A</b> escala toda la onda. Cada coeficiente c<sub>n</sub>
+    escala el armónico n-ésimo: usa el deslizador o escribe el valor exacto.
+    En la onda cuadrada y la triangular, los coeficientes de armónicos pares
+    (c₂, c₄, …) no tienen efecto porque solo usan armónicos impares.
+  </p>
+
+  <!-- ============ GRÁFICAS ============ -->
+  <div class="grid">
+
+    <!-- Cuadrada -->
+    <section class="card" style="--c:#4cc9f0">
+      <h2><span class="dot"></span>Onda Cuadrada</h2>
+      <canvas id="cvSquare"></canvas>
+
+      <div class="eq">
+        <span class="lbl">Ecuación general</span>
+        <div class="formula">
+          f(t) = A · <span class="frac"><span class="num">4</span><span class="den">π</span></span>
+          [ c<sub>1</sub> sin(ωt) +
+          <span class="frac"><span class="num">c<sub>3</sub> sin(3ωt)</span><span class="den">3</span></span> +
+          <span class="frac"><span class="num">c<sub>5</sub> sin(5ωt)</span><span class="den">5</span></span> +
+          <span class="frac"><span class="num">c<sub>7</sub> sin(7ωt)</span><span class="den">7</span></span> + ⋯ ]
+        </div>
+      </div>
+
+      <div class="eq sub">
+        <span class="lbl">Ecuación sustituida</span>
+        <div class="formula" id="eqSubSquare"></div>
+        <div class="omega"></div>
+      </div>
+    </section>
+
+    <!-- Diente de sierra -->
+    <section class="card" style="--c:#ffb703">
+      <h2><span class="dot"></span>Diente de Sierra</h2>
+      <canvas id="cvSaw"></canvas>
+
+      <div class="eq">
+        <span class="lbl">Ecuación general</span>
+        <div class="formula">
+          f(t) = A · <span class="frac"><span class="num">2</span><span class="den">π</span></span>
+          [ c<sub>1</sub> sin(ωt) −
+          <span class="frac"><span class="num">c<sub>2</sub> sin(2ωt)</span><span class="den">2</span></span> +
+          <span class="frac"><span class="num">c<sub>3</sub> sin(3ωt)</span><span class="den">3</span></span> −
+          <span class="frac"><span class="num">c<sub>4</sub> sin(4ωt)</span><span class="den">4</span></span> + ⋯ ]
+        </div>
+      </div>
+
+      <div class="eq sub">
+        <span class="lbl">Ecuación sustituida</span>
+        <div class="formula" id="eqSubSaw"></div>
+        <div class="omega"></div>
+      </div>
+    </section>
+
+    <!-- Triangular -->
+    <section class="card" style="--c:#b892ff">
+      <h2><span class="dot"></span>Onda Triangular</h2>
+      <canvas id="cvTriangle"></canvas>
+
+      <div class="eq">
+        <span class="lbl">Ecuación general</span>
+        <div class="formula">
+          f(t) = A · <span class="frac"><span class="num">8</span><span class="den">π²</span></span>
+          [ c<sub>1</sub> sin(ωt) −
+          <span class="frac"><span class="num">c<sub>3</sub> sin(3ωt)</span><span class="den">9</span></span> +
+          <span class="frac"><span class="num">c<sub>5</sub> sin(5ωt)</span><span class="den">25</span></span> −
+          <span class="frac"><span class="num">c<sub>7</sub> sin(7ωt)</span><span class="den">49</span></span> + ⋯ ]
+        </div>
+      </div>
+
+      <div class="eq sub">
+        <span class="lbl">Ecuación sustituida</span>
+        <div class="formula" id="eqSubTriangle"></div>
+        <div class="omega"></div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* =========================================================
+     Configuración
+     ========================================================= */
+  const TAU        = Math.PI * 2;
+  const N_ARM      = 25;    // armónicos usados en la aproximación
+  const WINDOW_SEC = 2;     // segundos visibles en pantalla
+  const MAX_TERMS  = 20;
+
+  const COLORS = {
+    square  : '#4cc9f0',
+    saw     : '#ffb703',
+    triangle: '#b892ff'
+  };
+
+  const state = {
+    running: false,
+    time: 0,
+    freq: 0.6,
+    amplitude: 1,
+    nTerms: 3,
+    coeffs: new Array(MAX_TERMS).fill(1)   // c1..c20
+  };
+
+  const canvases = {
+    square  : document.getElementById('cvSquare'),
+    saw     : document.getElementById('cvSaw'),
+    triangle: document.getElementById('cvTriangle')
+  };
+
+  /* =========================================================
+     Matemáticas de la serie de Fourier
+     ========================================================= */
+  function baseCoeff(kind, n) {
+    const odd = (n % 2) === 1;
+
+    if (kind === 'square') {
+      return odd ? 4 / (n * Math.PI) : 0;
+    }
+
+    if (kind === 'saw') {
+      return (odd ? 1 : -1) * 2 / (n * Math.PI);
+    }
+
+    // triangular: solo armónicos impares
+    if (!odd) return 0;
+    const sign = (((n - 1) / 2) % 2 === 0) ? 1 : -1;
+    return sign * 8 / (Math.PI * Math.PI * n * n);
+  }
+
+  /** Coeficiente definido por el usuario; 1 si el término no está activo */
+  function coeffAt(n) {
+    return (n <= state.nTerms) ? state.coeffs[n - 1] : 1;
+  }
+
+  /** x = ω·t */
+  function fourierValue(kind, x) {
+    let sum = 0;
+    for (let n = 1; n <= N_ARM; n++) {
+      let a = baseCoeff(kind, n);
+      if (a === 0) continue;
+      a *= coeffAt(n);
+      sum += a * Math.sin(n * x);
+    }
+    return state.amplitude * sum;
+  }
+
+  /** Onda "ideal" de referencia (línea punteada) */
+  function idealValue(kind, x) {
+    const p = ((x % TAU) + TAU) % TAU;
+    let v;
+
+    if (kind === 'square') {
+      v = p < Math.PI ? 1 : -1;
+    } else if (kind === 'saw') {
+      const q = p > Math.PI ? p - TAU : p;
+      v = q / Math.PI;
+    } else {
+      v = (2 / Math.PI) * Math.asin(Math.sin(x));
+    }
+    return state.amplitude * v;
+  }
+
+  /* =========================================================
+     Dibujo
+     ========================================================= */
+  function drawGraph(kind) {
+    const canvas = canvases[kind];
+    const ctx    = canvas.getContext('2d');
+    const dpr    = window.devicePixelRatio || 1;
+
+    const W = canvas.width / dpr;
+    const H = canvas.height / dpr;
+    if (W < 4 || H < 4) return;
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+
+    const padY    = 14;
+    const plotTop = padY;
+    const plotH   = H - padY * 2;
+    const y0      = plotTop + plotH / 2;
+    const amp     = plotH * 0.36;
+
+    const omega = TAU * state.freq;
+    const t0    = state.time;
+
+    /* --- rejilla --- */
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(120,140,200,0.10)';
+    for (let i = 1; i < 10; i++) {
+      const x = Math.round(W * i / 10) + 0.5;
+      ctx.beginPath();
+      ctx.moveTo(x, plotTop);
+      ctx.lineTo(x, plotTop + plotH);
+      ctx.stroke();
+    }
+
+    [-1, -0.5, 0, 0.5, 1].forEach(function (v) {
+      const y = Math.round(y0 - v * amp) + 0.5;
+      ctx.strokeStyle = (v === 0) ? 'rgba(160,180,230,0.32)' : 'rgba(120,140,200,0.10)';
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(W, y);
+      ctx.stroke();
+    });
+
+    /* --- recorte --- */
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, plotTop, W, plotH);
+    ctx.clip();
+
+    /* --- onda ideal (punteada) --- */
+    ctx.setLineDash([4, 5]);
+    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = 'rgba(200,210,240,0.38)';
+    ctx.beginPath();
+    for (let px = 0; px <= W; px += 1) {
+      const t = t0 + (px / W) * WINDOW_SEC;
+      const y = y0 - idealValue(kind, omega * t) * amp;
+      if (px === 0) ctx.moveTo(px, y); else ctx.lineTo(px, y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    /* --- suma de Fourier (brillante) --- */
+    ctx.lineWidth = 2.2;
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = COLORS[kind];
+    ctx.shadowColor = COLORS[kind];
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    for (let px = 0; px <= W; px += 1) {
+      const t = t0 + (px / W) * WINDOW_SEC;
+      const y = y0 - fourierValue(kind, omega * t) * amp;
+      if (px === 0) ctx.moveTo(px, y); else ctx.lineTo(px, y);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    ctx.restore();
+  }
+
+  function drawAll() {
+    for (const k in canvases) drawGraph(k);
+  }
+
+  /* =========================================================
+     Ecuaciones
+     ========================================================= */
+  function frac(num, den) {
+    return '<span class="frac"><span class="num">' + num +
+           '</span><span class="den">' + den + '</span></span>';
+  }
+  function val(v) {
+    return '<span class="val">' + v.toFixed(2) + '</span>';
+  }
+  function term(n, angle, denom) {
+    const html = val(coeffAt(n)) + ' sin(' + angle + ')';
+    return denom === 1 ? html : frac(html, String(denom));
+  }
+
+  const eqSubSquare   = document.getElementById('eqSubSquare');
+  const eqSubSaw      = document.getElementById('eqSubSaw');
+  const eqSubTriangle = document.getElementById('eqSubTriangle');
+
+  function updateEquations() {
+    const f  = state.freq;
+    const A  = val(state.amplitude);
+
+    /* --- cuadrada (armónicos impares) --- */
+    eqSubSquare.innerHTML =
+      'f(t) ≈ ' + A + ' · ' + frac('4', 'π') + ' [ ' +
+      term(1, 'ωt', 1) + ' + ' +
+      term(3, '3ωt', 3) + ' + ' +
+      term(5, '5ωt', 5) + ' + ' +
+      term(7, '7ωt', 7) + ' + ⋯ ]';
+
+    /* --- diente de sierra (todos los armónicos) --- */
+    eqSubSaw.innerHTML =
+      'f(t) ≈ ' + A + ' · ' + frac('2', 'π') + ' [ ' +
+      term(1, 'ωt', 1) + ' − ' +
+      term(2, '2ωt', 2) + ' + ' +
+      term(3, '3ωt', 3) + ' − ' +
+      term(4, '4ωt', 4) + ' + ⋯ ]';
+
+    /* --- triangular (armónicos impares) --- */
+    eqSubTriangle.innerHTML =
+      'f(t) ≈ ' + A + ' · ' + frac('8', 'π²') + ' [ ' +
+      term(1, 'ωt', 1) + ' − ' +
+      term(3, '3ωt', 9) + ' + ' +
+      term(5, '5ωt', 25) + ' − ' +
+      term(7, '7ωt', 49) + ' + ⋯ ]';
+
+    /* --- línea común de ω y A --- */
+    const omegaVal = (TAU * f).toFixed(2);
+    const line = 'ω = 2πf = 2π · <b>' + f.toFixed(2) + '</b> = <b>' + omegaVal +
+                 '</b> rad/s · A = <b>' + state.amplitude.toFixed(2) + '</b>';
+    document.querySelectorAll('.omega').forEach(function (el) {
+      el.innerHTML = line;
+    });
+  }
+
+  /* =========================================================
+     Tamaño de los canvas
+     ========================================================= */
+  function resizeAll() {
+    const dpr = window.devicePixelRatio || 1;
+
+    for (const k in canvases) {
+      const c = canvases[k];
+      const r = c.getBoundingClientRect();
+      const w = Math.max(1, Math.round(r.width  * dpr));
+      const h = Math.max(1, Math.round(r.height * dpr));
+      if (c.width !== w || c.height !== h) {
+        c.width  = w;
+        c.height = h;
+      }
+    }
+    drawAll();
+  }
+
+  /* =========================================================
+     Bucle de animación
+     ========================================================= */
+  let lastTs = performance.now();
+
+  function tick(ts) {
+    const dt = Math.min((ts - lastTs) / 1000, 0.05);
+    lastTs = ts;
+
+    if (state.running) {
+      state.time += dt;
+      drawAll();
+    }
+    requestAnimationFrame(tick);
+  }
+
+  /* =========================================================
+     Control sincronizado: deslizador + casilla numérica
+     ========================================================= */
+  function bindControl(rangeEl, numEl, decimals, onChange) {
+    const min = parseFloat(rangeEl.min);
+    const max = parseFloat(rangeEl.max);
+
+    function fromRange() {
+      const v = parseFloat(rangeEl.value);
+      numEl.value = v.toFixed(decimals);
+      onChange(v);
+    }
+
+    function fromNumber() {
+      let v = parseFloat(numEl.value);
+      if (!isFinite(v)) return;
+      v = Math.min(max, Math.max(min, v));
+      rangeEl.value = String(v);
+      onChange(v);
+    }
+
+    function normalize() {
+      const v = parseFloat(rangeEl.value);
+      numEl.value = v.toFixed(decimals);
+    }
+
+    rangeEl.addEventListener('input', fromRange);
+    numEl.addEventListener('input', fromNumber);
+    numEl.addEventListener('change', normalize);
+    numEl.addEventListener('blur', normalize);
+  }
+
+  /* =========================================================
+     Términos dinámicos (panel desplegable)
+     ========================================================= */
+  const termsPanel    = document.getElementById('termsPanel');
+  const termsHead     = document.getElementById('termsHead');
+  const termsGrid     = document.getElementById('termsGrid');
+  const termsCountEl  = document.getElementById('termsCount');
+  const addTermBtn    = document.getElementById('addTerm');
+  const removeTermBtn = document.getElementById('removeTerm');
+
+  termsHead.addEventListener('click', function () {
+    termsPanel.classList.toggle('open');
+  });
+
+  function buildTermsUI() {
+    termsGrid.innerHTML = '';
+
+    for (let i = 0; i < state.nTerms; i++) {
+      const n = i + 1;
+      const value = state.coeffs[i].toFixed(2);
+
+      const wrap = document.createElement('div');
+      wrap.className = 'slider';
+      wrap.innerHTML =
+        '<label for="termRange' + n + '">c<sub>' + n + '</sub></label>' +
+        '<div class="ctl">' +
+          '<input id="termRange' + n + '" type="range" min="0" max="2" step="0.01" value="' + value + '">' +
+          '<input id="termNum'   + n + '" type="number" min="0" max="2" step="0.01" value="' + value + '">' +
+        '</div>';
+
+      termsGrid.appendChild(wrap);
+
+      bindControl(
+        wrap.querySelector('input[type="range"]'),
+        wrap.querySelector('input[type="number"]'),
+        2,
+        (function (idx) {
+          return function (v) {
+            state.coeffs[idx] = v;
+            updateEquations();
+            drawAll();
+          };
+        })(i)
+      );
+    }
+
+    termsCountEl.textContent = state.nTerms + ' de ' + MAX_TERMS;
+    addTermBtn.disabled    = state.nTerms >= MAX_TERMS;
+    removeTermBtn.disabled = state.nTerms <= 1;
+  }
+
+  addTermBtn.addEventListener('click', function () {
+    if (state.nTerms < MAX_TERMS) {
+      state.nTerms++;
+      buildTermsUI();
+      updateEquations();
+      drawAll();
+    }
+  });
+
+  removeTermBtn.addEventListener('click', function () {
+    if (state.nTerms > 1) {
+      state.nTerms--;
+      buildTermsUI();
+      updateEquations();
+      drawAll();
+    }
+  });
+
+  /* =========================================================
+     Botones de iniciar / detener
+     ========================================================= */
+  const btnStart = document.getElementById('btnStart');
+  const btnStop  = document.getElementById('btnStop');
+
+  btnStart.addEventListener('click', function () {
+    state.running = true;
+    lastTs = performance.now();
+    btnStart.classList.remove('inactive');
+    btnStop.classList.add('inactive');
+  });
+
+  btnStop.addEventListener('click', function () {
+    state.running = false;
+    btnStop.classList.remove('inactive');
+    btnStart.classList.add('inactive');
+  });
+
+  /* =========================================================
+     Frecuencia y amplitud
+     ========================================================= */
+  bindControl(
+    document.getElementById('freq'),
+    document.getElementById('freqNum'),
+    2,
+    function (v) {
+      state.freq = v;
+      updateEquations();
+      drawAll();
+    }
+  );
+
+  bindControl(
+    document.getElementById('amp'),
+    document.getElementById('ampNum'),
+    2,
+    function (v) {
+      state.amplitude = v;
+      updateEquations();
+      drawAll();
+    }
+  );
+
+  /* =========================================================
+     Arranque
+     ========================================================= */
+  window.addEventListener('resize', resizeAll);
+
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver(function () { resizeAll(); });
+    for (const k in canvases) ro.observe(canvases[k]);
+  }
+
+  resizeAll();
+  buildTermsUI();
+  updateEquations();
+  requestAnimationFrame(tick);
+
+})();
+</script>
+</body>
+</html>
